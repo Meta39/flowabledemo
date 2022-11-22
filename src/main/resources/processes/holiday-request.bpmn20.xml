@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             xmlns:flowable="http://flowable.org/bpmn"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://www.flowable.org/processdef">
+
+    <!--    脑海里需要形成一张流程图-->
+    <!--    id是流程定义ID，name是流程名称。相当于定义一个流程，定义流程的ID、名称-->
+    <process id="holidayRequest" name="请假流程" isExecutable="true">
+        <!--        开始流程-开始。相当于开始按钮-->
+        <startEvent id="startEvent"/>
+        <!--        承上启下：承上sourceRef，启下：targetRef。相当于——>  -->
+        <sequenceFlow sourceRef="startEvent" targetRef="approveTask"/>
+
+        <!--        判断条件。相当于菱形判断条件、flowable:assignee就是当前有权限的操作人是谁-->
+        <userTask id="approveTask" name="同意或拒绝请假" flowable:assignee="zhangsan"/>
+        <!--        判断条件描述或内容-->
+        <sequenceFlow sourceRef="approveTask" targetRef="decision"/>
+
+        <!--        判断条件描述或内容的ID-->
+        <exclusiveGateway id="decision"/>
+        <!--        通过判断条件描述或内容的ID指向第一个符合条件的操作，与其它条件为互斥关系。相当于菱形的第一个箭头指向的下一步操作-->
+        <sequenceFlow sourceRef="decision" targetRef="externalSystemCall">
+            <!--            菱形箭头指向下一步操作的条件。相当于——>指向——的第一条线的条件-->
+            <conditionExpression xsi:type="tFormalExpression">
+                <![CDATA[
+          ${approved}
+        ]]>
+            </conditionExpression>
+        </sequenceFlow>
+        <!--        通过判断条件描述或内容的ID指向第二个符合条件的操作。相当于菱形的第二个箭头所指向的下一步操作-->
+        <sequenceFlow sourceRef="decision" targetRef="sendRejectionMail">
+            <!--            菱形箭头指向下一步操作的条件。相当于——>指向——的第二条线的条件-->
+            <conditionExpression xsi:type="tFormalExpression">
+                <![CDATA[
+          ${!approved}
+        ]]>
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!--        菱形的第一个箭头指向的下一步操作-->
+        <serviceTask id="externalSystemCall" name="Enter holidays in external system"
+                     flowable:class="org.flowable.CallExternalSystemDelegate"/>
+        <!--        菱形的第一个箭头指向的下一步操作承上启下箭头。相当于A——>B下一步操作， -->
+        <sequenceFlow sourceRef="externalSystemCall" targetRef="holidayApprovedTask"/>
+
+        <!--        ——>下一步操作定义的名称-->
+        <userTask id="holidayApprovedTask" name="Holiday approved"/>
+        <!--        继续下一步，这里下一步是结束，所以这里是箭头——>指向第一个条件结束按钮定义的ID-->
+        <sequenceFlow sourceRef="holidayApprovedTask" targetRef="approveEnd"/>
+
+
+        <!--        菱形的第二个箭头指向的下一步操作-->
+        <serviceTask id="sendRejectionMail" name="Send out rejection email" flowable:class="com.hw.flowabledemo.delegate.SendRejectionMail"/>
+        <!--  flowable:class="org.flowable.SendRejectionMail" 如果先部署了流程，并且启动了流程，再改这个配置文件，会报错，因为这个部署流程并启动流程的时候会把这个xml文件存储到数据库里的act_ge_bytearray表对应的xml的NAME_名称的BYTES_字段里，如果会报错就查找替换掉相应的错误的flowable:class的值 />-->
+        <!--        菱形的第二个箭头指向的下一步操作的——>指向第二个条件结束按钮定义的ID-->
+        <sequenceFlow sourceRef="sendRejectionMail" targetRef="rejectEnd"/>
+
+        <!--        第一个结束按钮的ID-->
+        <endEvent id="approveEnd"/>
+        <!--        第二个结束按钮的ID-->
+        <endEvent id="rejectEnd"/>
+
+    </process>
+
+</definitions>
